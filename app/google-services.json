@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "646451442159",
+    "firebase_url": "https://aae-form-root-canal-ml.firebaseio.com",
+    "project_id": "aae-form-root-canal-ml",
+    "storage_bucket": "aae-form-root-canal-ml.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646451442159:android:298b44a0ab658f22",
+        "android_client_info": {
+          "package_name": "com.psychapps.aaeform"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "646451442159-vbmke7o68kdeid11j7118fenvb0mr87r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.psychapps.aaeform",
+            "certificate_hash": "2f1d6b5999a48a91bd449ec613d8c6cb8cc25247"
+          }
+        },
+        {
+          "client_id": "646451442159-jnhuk0vqbgt98sscpabj2109vm53vjqq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxO_uydIE9RZ09UZzvbuJZahfkxwtFF2I"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "646451442159-jnhuk0vqbgt98sscpabj2109vm53vjqq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
