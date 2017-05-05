@@ -1,4 +1,4 @@
-package com.psychapps.aaeform.entities;
+package com.psychapps.aaeform.models;
 
 import com.google.firebase.database.IgnoreExtraProperties;
 

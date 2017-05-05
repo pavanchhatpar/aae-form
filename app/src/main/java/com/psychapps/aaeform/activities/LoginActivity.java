@@ -37,7 +37,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.psychapps.aaeform.R;
-import com.psychapps.aaeform.entities.User;
+import com.psychapps.aaeform.models.User;
 
 import org.mindrot.jbcrypt.BCrypt;
 
@@ -83,8 +83,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         populateAutoComplete();
         setDatabaseReference();
         mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
-        isLoggedIn();
         mPasswordView = (EditText) findViewById(R.id.password);
+        mLoginFormView = findViewById(R.id.login_form);
+        mProgressView = findViewById(R.id.login_progress);
+        isLoggedIn();
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -102,9 +104,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 attemptLogin();
             }
         });
-
-        mLoginFormView = findViewById(R.id.login_form);
-        mProgressView = findViewById(R.id.login_progress);
     }
 
     private void isLoggedIn() {
@@ -112,15 +111,26 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         final String password;
         if((email=sp.getString(EMAIL_ID, null)) != null && (password=sp.getString(PASSWORD, null)) != null) {
             mEmailSignInButton.setText(R.string.action_logging_in);
+            showProgress(true);
             email = email.replaceAll("\\.", "__dot__");
             databaseReference.child("users").child(email).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    User user = dataSnapshot.getValue(User.class);
-                    if(BCrypt.checkpw(password, user.getPassword())) {
-                        moveAhead();
+                    if(dataSnapshot.getValue() != null) {
+                        User user = dataSnapshot.getValue(User.class);
+                        if (BCrypt.checkpw(password, user.getPassword())) {
+                            moveAhead();
+                        } else {
+                            mEmailSignInButton.setText(R.string.action_sign_in);
+                            showProgress(false);
+                        }
                     } else {
+                        spe = sp.edit();
+                        spe.remove(EMAIL_ID);
+                        spe.remove(PASSWORD);
+                        spe.apply();
                         mEmailSignInButton.setText(R.string.action_sign_in);
+                        showProgress(false);
                     }
                 }
 
@@ -241,7 +251,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
 
             loggingIn = true;
-            //showProgress(true);
+            showProgress(true);
             mEmailSignInButton.setText(getString(R.string.action_logging_in));
             final String finalEmail = email;
             final String finalPassword = password;
@@ -253,7 +263,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                         if(BCrypt.checkpw(finalPassword,user[0].getPassword())) {
                             doLogin(finalEmail.replaceAll("__dot__", "."), finalPassword);
                         } else {
-                            //showProgress(false);
+                            showProgress(false);
                             loggingIn = false;
                             mEmailSignInButton.setText(getString(R.string.action_sign_in));
                             mPasswordView.setError(getString(R.string.error_incorrect_password));
@@ -305,8 +315,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
     }
 
+    private void showProgress(boolean b) {
+        mProgressView.setVisibility(b?View.VISIBLE:View.GONE);
+    }
+
     private void doLogin(String email, String password) {
-        //showProgress(false);
+        showProgress(false);
         loggingIn = false;
         mEmailSignInButton.setText(getString(R.string.action_sign_in));
         spe = sp.edit();
@@ -318,7 +332,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
     private void preDoLogin(final String email, final String password) {
         AlertDialog ad = new AlertDialog.Builder(LoginActivity.this)
-                .setMessage("Hello "+ user[0].getName() + ", your password is " + password + ". Keep it safe.")
+                .setMessage("Hello "+ user[0].getName() + ", your password is \"" + password + "\". Keep it safe.")
                 .setCancelable(false)
                 .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     @Override

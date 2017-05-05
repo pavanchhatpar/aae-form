@@ -19,8 +19,8 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.psychapps.aaeform.R;
-import com.psychapps.aaeform.entities.Form;
-import com.psychapps.aaeform.entities.User;
+import com.psychapps.aaeform.models.Form;
+import com.psychapps.aaeform.models.User;
 
 public class MainActivity extends AppCompatActivity {
     SharedPreferences sp;
@@ -62,7 +62,8 @@ public class MainActivity extends AppCompatActivity {
         final int[] total = {0};
         mineView.setText("You filled " + mine[0] + " forms");
         totalView.setText("Total, " + total[0] + " forms filled");
-        databaseReference.child("forms").addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseReference.child("forms").keepSynced(true);
+        databaseReference.child("forms").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Form form;
@@ -116,7 +117,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadForm() {
-
+        Intent intent = new Intent(getBaseContext(), FormActivity.class);
+        startActivity(intent);
     }
 
 }

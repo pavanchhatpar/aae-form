@@ -17,4 +17,7 @@
     <string name="welcome_new_user">Hello User!</string>
     <string name="action_logging_in">Logging in...</string>
     <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_form">Form</string>
+    <string name="menu_reset">Reset</string>
+    <string name="menu_done">Done</string>
 </resources>
