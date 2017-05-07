@@ -1,13 +1,10 @@
-package com.psychapps.aaeform.activities;
+package com.psychapps.aaeform.controllers;
 
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.graphics.Typeface;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -62,8 +59,6 @@ public class FormActivity extends AppCompatActivity {
         mProgress = (ProgressBar) findViewById(R.id.form_load_progress);
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference = firebaseDatabase.getReference();
-        databaseReference.child("f_skeleton").keepSynced(true);
-        databaseReference.child("formResponses").keepSynced(true);
         databaseReference.child("f_skeleton").child("A").addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {

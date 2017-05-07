@@ -1,4 +1,4 @@
-package com.psychapps.aaeform.activities;
+package com.psychapps.aaeform.controllers;
 
 import android.content.Context;
 import android.content.Intent;
@@ -58,22 +58,20 @@ public class MainActivity extends AppCompatActivity {
         emailView.setText(email);
         final TextView mineView = (TextView)findViewById(R.id.mine);
         final TextView totalView = (TextView)findViewById(R.id.total);
-        final int[] mine = {0};
-        final int[] total = {0};
-        mineView.setText("You filled " + mine[0] + " forms");
-        totalView.setText("Total, " + total[0] + " forms filled");
-        databaseReference.child("forms").keepSynced(true);
+        mineView.setText("You filled 0 forms");
+        totalView.setText("Total, 0 forms filled");
         databaseReference.child("forms").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Form form;
+                int mine= 0, total=0;
                 for(DataSnapshot ds: dataSnapshot.getChildren()) {
                     form = ds.getValue(Form.class);
-                    if(form.getEmailid().equals(email)) mine[0]++;
-                    total[0]++;
+                    if(form.getEmailid().equals(email)) mine++;
+                    total++;
                 }
-                mineView.setText("You filled " + mine[0] + " forms");
-                totalView.setText("Total, " + total[0] + " forms filled");
+                mineView.setText("You filled " + mine + " forms");
+                totalView.setText("Total, " + total + " forms filled");
             }
 
             @Override

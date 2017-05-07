@@ -1,4 +1,4 @@
-package com.psychapps.aaeform.activities;
+package com.psychapps.aaeform.controllers;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -152,7 +152,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private void setDatabaseReference() {
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference = firebaseDatabase.getReference();
-        databaseReference.child("users").keepSynced(true);
     }
 
     private void populateAutoComplete() {
