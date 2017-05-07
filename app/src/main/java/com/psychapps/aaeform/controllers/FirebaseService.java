@@ -36,7 +36,6 @@ public class FirebaseService extends Service {
         databaseReference.child("f_skeleton").keepSynced(true);
         databaseReference.child("formResponses").keepSynced(true);
         databaseReference.child("forms").keepSynced(true);
-        databaseReference.child("users").keepSynced(true);
         return START_STICKY;
     }
 

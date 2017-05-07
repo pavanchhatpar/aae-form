@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
@@ -21,6 +22,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -30,16 +32,22 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseNetworkException;
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.psychapps.aaeform.R;
-import com.psychapps.aaeform.models.User;
-
-import org.mindrot.jbcrypt.BCrypt;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,11 +75,13 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private View mLoginFormView;
     private DatabaseReference databaseReference;
     private FirebaseDatabase firebaseDatabase;
-    private final User[] user = new User[1];
     private boolean loggingIn = false;
     private Button mEmailSignInButton;
     private SharedPreferences sp;
     private  SharedPreferences.Editor spe;
+    //firebase auth
+    private FirebaseAuth fAuth;
+    private FirebaseAuth.AuthStateListener fAuthStateListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,7 +91,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         // Set up the login form.
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
         populateAutoComplete();
-        setDatabaseReference();
+        setupFirebaseInstances();
+
         mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
         mPasswordView = (EditText) findViewById(R.id.password);
         mLoginFormView = findViewById(R.id.login_form);
@@ -106,39 +117,153 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         });
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        fAuth.addAuthStateListener(fAuthStateListener);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(fAuthStateListener != null) {
+            fAuth.removeAuthStateListener(fAuthStateListener);
+        }
+    }
+
+    private void signUp(String email, final String password) {
+        fAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d("Firebase auth", "User sign up: " + (task.isSuccessful() ? "successful" : "unsuccessful"), task.getException());
+                        if(task.isSuccessful()) {
+                            final View newUser = getLayoutInflater().inflate(R.layout.new_user,null);
+                            final AlertDialog adb = new AlertDialog.Builder(LoginActivity.this)
+                                    .setView(newUser)
+                                    .setPositiveButton(android.R.string.ok, null)
+                                    .create();
+
+                            adb.setOnShowListener(new DialogInterface.OnShowListener() {
+                                @Override
+                                public void onShow(final DialogInterface dialog) {
+                                    Button button = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
+                                    button.setOnClickListener(new View.OnClickListener() {
+
+                                        @Override
+                                        public void onClick(View view) {
+                                            // TODO Do something
+                                            EditText et = (EditText)newUser.findViewById(R.id.new_name);
+                                            String name = et.getText().toString();
+                                            et.setError(null); //reset errors
+                                            if(TextUtils.isEmpty(name)) {
+                                                et.setError(getString(R.string.error_field_required));
+                                                et.requestFocus();
+                                            } else {
+                                                //Dismiss once everything is OK.
+                                                UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                                                        .setDisplayName(name).build();
+                                                fAuth.getCurrentUser().updateProfile(profileUpdates)
+                                                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                                            @Override
+                                                            public void onComplete(@NonNull Task<Void> task) {
+                                                                if(task.isSuccessful()) {
+                                                                    adb.dismiss();
+                                                                    AlertDialog ad = new AlertDialog.Builder(LoginActivity.this)
+                                                                            .setMessage("Hello " + fAuth.getCurrentUser().getEmail() + ", your password is \"" + password + "\". Keep it safe.")
+                                                                            .setCancelable(false)
+                                                                            .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                                                                                @Override
+                                                                                public void onClick(DialogInterface dialog, int which) {
+                                                                                    doLogin(fAuth.getCurrentUser().getEmail(), password);
+                                                                                }
+                                                                            })
+                                                                            .create();
+                                                                    ad.show();
+                                                                } else {
+                                                                    Log.e("Firebase auth", "cant set name", task.getException());
+                                                                }
+                                                            }
+                                                        });
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                            adb.show();
+                        } else {
+                            showProgress(false);
+                            mPasswordView.setError("Weak password");
+                            mPasswordView.requestFocus();
+                            mPasswordView.setText("");
+                            loggingIn = false;
+                            mEmailSignInButton.setText(R.string.action_sign_in);
+                        }
+                    }
+                });
+    }
+
+    private void signIn(String email, String password) {
+        signIn(email, password, false);
+    }
+
+    private void signIn(final String email, final String password, final boolean orSignUp) {
+        fAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        Log.d("Firebase auth", "user sign in: " + (task.isSuccessful() ? "successful": "unsuccessful"));
+                        if(task.isSuccessful()) {
+                            doLogin(fAuth.getCurrentUser().getEmail(), password);
+                        } else {
+                            try {
+                                throw task.getException();
+                            } catch (FirebaseAuthInvalidUserException e) {
+                                Log.d("Firebase auth", e.getErrorCode());
+                                if(e.getErrorCode().equals("ERROR_USER_NOT_FOUND")) {
+                                    if(orSignUp) {
+                                        signUp(email, password);
+                                    } else {
+                                        spe = sp.edit();
+                                        spe.remove(EMAIL_ID);
+                                        spe.remove(PASSWORD);
+                                        spe.apply();
+                                        mEmailSignInButton.setText(R.string.action_sign_in);
+                                        showProgress(false);
+                                    }
+                                }
+                            }catch (FirebaseNetworkException e) {
+                                if(!orSignUp)
+                                    doLogin(fAuth.getCurrentUser().getEmail(), password);
+                                else {
+                                    Toast.makeText(getBaseContext(), "Check connectivity", Toast.LENGTH_SHORT).show();
+                                    showProgress(false);
+                                    loggingIn = false;
+                                    mEmailSignInButton.setText(getString(R.string.action_sign_in));
+                                }
+                            }
+                            catch (Exception e) {
+                                e.printStackTrace();
+                                mPasswordView.setError(getString(R.string.error_incorrect_password));
+                                mPasswordView.requestFocus();
+                                mPasswordView.setText("");
+                                loggingIn=false;
+                                showProgress(false);
+                                mEmailSignInButton.setText(R.string.action_sign_in);
+                            }
+                        }
+                    }
+                });
+    }
+
     private void isLoggedIn() {
         String email;
         final String password;
         if((email=sp.getString(EMAIL_ID, null)) != null && (password=sp.getString(PASSWORD, null)) != null) {
             mEmailSignInButton.setText(R.string.action_logging_in);
             showProgress(true);
-            email = email.replaceAll("\\.", "__dot__");
-            databaseReference.child("users").child(email).addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    if(dataSnapshot.getValue() != null) {
-                        User user = dataSnapshot.getValue(User.class);
-                        if (BCrypt.checkpw(password, user.getPassword())) {
-                            moveAhead();
-                        } else {
-                            mEmailSignInButton.setText(R.string.action_sign_in);
-                            showProgress(false);
-                        }
-                    } else {
-                        spe = sp.edit();
-                        spe.remove(EMAIL_ID);
-                        spe.remove(PASSWORD);
-                        spe.apply();
-                        mEmailSignInButton.setText(R.string.action_sign_in);
-                        showProgress(false);
-                    }
-                }
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-
-                }
-            });
+            signIn(email, password);
         }
     }
 
@@ -149,9 +274,28 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         startActivity(intent);
     }
 
-    private void setDatabaseReference() {
+    private void setupFirebaseInstances() {
         firebaseDatabase = FirebaseDatabase.getInstance();
         databaseReference = firebaseDatabase.getReference();
+        fAuth = FirebaseAuth.getInstance();
+        fAuthStateListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if(user != null) {
+                    if(user.getDisplayName() != null) {
+                        Log.d("Firebase Auth", "user " + user.getDisplayName() + " signed in");
+                    } else {
+                        Log.d("Firebase Auth", "user " + user.getEmail() + " signed in");
+                    }
+                    databaseReference.child("f_skeleton").keepSynced(true);
+                    databaseReference.child("formResponses").keepSynced(true);
+                    databaseReference.child("forms").keepSynced(true);
+                } else {
+                    Log.d("Firebase Auth", "user signed out");
+                }
+            }
+        };
     }
 
     private void populateAutoComplete() {
@@ -246,71 +390,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         } else {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
-            email = email.replaceAll("\\.","__dot__");
-
 
             loggingIn = true;
             showProgress(true);
             mEmailSignInButton.setText(getString(R.string.action_logging_in));
-            final String finalEmail = email;
-            final String finalPassword = password;
-            databaseReference.child("users").child(email).addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    if(dataSnapshot.getValue() != null) {
-                        user[0] = dataSnapshot.getValue(User.class);
-                        if(BCrypt.checkpw(finalPassword,user[0].getPassword())) {
-                            doLogin(finalEmail.replaceAll("__dot__", "."), finalPassword);
-                        } else {
-                            showProgress(false);
-                            loggingIn = false;
-                            mEmailSignInButton.setText(getString(R.string.action_sign_in));
-                            mPasswordView.setError(getString(R.string.error_incorrect_password));
-                            mPasswordView.requestFocus();
-                        }
-                    } else {
-                        final View newUser = getLayoutInflater().inflate(R.layout.new_user,null);
-                        final AlertDialog adb = new AlertDialog.Builder(LoginActivity.this)
-                        .setView(newUser)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .create();
+            new UserLoginTask(email, password).execute();
 
-                        adb.setOnShowListener(new DialogInterface.OnShowListener() {
-                            @Override
-                            public void onShow(final DialogInterface dialog) {
-                                Button button = ((AlertDialog) dialog).getButton(AlertDialog.BUTTON_POSITIVE);
-                                button.setOnClickListener(new View.OnClickListener() {
-
-                                    @Override
-                                    public void onClick(View view) {
-                                        // TODO Do something
-                                        EditText et = (EditText)newUser.findViewById(R.id.new_name);
-                                        String name = et.getText().toString();
-                                        et.setError(null); //reset errors
-                                        if(TextUtils.isEmpty(name)) {
-                                            et.setError(getString(R.string.error_field_required));
-                                            et.requestFocus();
-                                        } else {
-                                            //Dismiss once everything is OK.
-                                            String pass = BCrypt.hashpw(finalPassword, BCrypt.gensalt());
-                                            user[0] = new User(name, pass);
-                                            databaseReference.child("users").child(finalEmail).setValue(user[0]);
-                                            adb.dismiss();
-                                            preDoLogin(finalEmail.replaceAll("__dot__","."), finalPassword);
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                        adb.show();
-                    }
-                }
-
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-
-                }
-            });
         }
     }
 
@@ -327,20 +412,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         spe.putString(PASSWORD, password);
         spe.apply();
         moveAhead();
-    }
-
-    private void preDoLogin(final String email, final String password) {
-        AlertDialog ad = new AlertDialog.Builder(LoginActivity.this)
-                .setMessage("Hello "+ user[0].getName() + ", your password is \"" + password + "\". Keep it safe.")
-                .setCancelable(false)
-                .setNeutralButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        doLogin(email, password);
-                    }
-                })
-                .create();
-        ad.show();
     }
 
     private boolean isEmailValid(String email) {
@@ -407,5 +478,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         int IS_PRIMARY = 1;
     }
 
+    private class UserLoginTask extends AsyncTask<Void, Void, Void> {
+        private String email, password;
+        public UserLoginTask(String email, String password) {
+            this.email =email;
+            this.password =password;
+        }
+        @Override
+        protected Void doInBackground(Void... params) {
+            signIn(email, password,true);
+            return null;
+        }
+    }
 }
 
