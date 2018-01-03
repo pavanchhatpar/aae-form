@@ -20,5 +20,6 @@
     <string name="title_activity_form">Form</string>
     <string name="menu_reset">Reset</string>
     <string name="menu_done">Done</string>
+    <string name="menu_predict">Predict</string>
     <string name="firebase_stopped">Firebase service stopped</string>
 </resources>

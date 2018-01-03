@@ -32,6 +32,8 @@ import com.psychapps.aaeform.models.Form;
 import com.psychapps.aaeform.models.FormResponse;
 import com.psychapps.aaeform.models.FormSkeleton;
 
+import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
+
 import java.util.ArrayList;
 
 public class FormActivity extends AppCompatActivity {
@@ -41,6 +43,7 @@ public class FormActivity extends AppCompatActivity {
     private TextView criteria;
     private LinearLayout min, mod, high;
     private ProgressBar mProgress;
+    private boolean predict = false;
     FirebaseDatabase firebaseDatabase;
     DatabaseReference databaseReference;
     SharedPreferences sp;
@@ -50,6 +53,7 @@ public class FormActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_form);
+        predict = getIntent().getBooleanExtra("predict", false);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
@@ -131,7 +135,11 @@ public class FormActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.form_activity_menu, menu);
+        if(predict) {
+            getMenuInflater().inflate(R.menu.predict_menu, menu);
+        } else {
+            getMenuInflater().inflate(R.menu.form_activity_menu, menu);
+        }
         return true;
     }
 
@@ -142,10 +150,60 @@ public class FormActivity extends AppCompatActivity {
                 confirmExit();
                 break;
             case R.id.form_done:
-                checkForm();
+                preSubmitForm();
+                break;
+            case R.id.form_predict:
+                predict();
                 break;
         }
         return true;
+    }
+
+    private void predict() {
+        float [] input = new float[17];
+        TensorFlowInferenceInterface tf = new TensorFlowInferenceInterface(
+                getAssets(),
+                "file:///android_asset/freeze.pb"
+        );
+        int j = 0;
+        for(FormResponse fr: formResponses) {
+            float sum = 0f;
+            for(int i : fr.getMin()) {
+                sum+=i;
+            }
+            for(int i : fr.getMod()) {
+                sum+=i*2;
+            }
+            for(int i : fr.getHigh()) {
+                sum+=i*5;
+            }
+            input[j++] = sum;
+        }
+        tf.feed("Placeholder", input, 1, 17);
+        String outputNode = "dnn/head/predictions/classes";
+        String[] outputNodes = {outputNode};
+        tf.run(outputNodes);
+        long[] outputs = new long[1];
+        tf.fetch(outputNode, outputs);
+        String msg;
+        if(outputs[0] == 1) {
+            msg = "The patient should be referred to a specialist";
+        } else {
+            msg = "The patient should not be referred";
+        }
+        new AlertDialog.Builder(this)
+                .setIcon(android.R.drawable.ic_dialog_info)
+                .setTitle("Prediction")
+                .setMessage(msg)
+                .setPositiveButton("OK", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+
+                })
+                .show();
     }
 
     private void checkForm() {

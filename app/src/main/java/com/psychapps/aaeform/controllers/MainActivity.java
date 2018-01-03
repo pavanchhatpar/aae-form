@@ -13,6 +13,7 @@ import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -113,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                loadForm();
+                loadForm(false);
             }
         });
         fab.setOnLongClickListener(new View.OnLongClickListener() {
@@ -123,7 +124,28 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("Record", new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
-                                loadForm();
+                                loadForm(false);
+                            }
+                        }).show();
+                return true;
+            }
+        });
+
+        FloatingActionButton fabPredict = (FloatingActionButton) findViewById(R.id.fab_predict);
+        fabPredict.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadForm(true);
+            }
+        });
+        fabPredict.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                Snackbar.make(view, "Make a prediction", Snackbar.LENGTH_LONG)
+                        .setAction("Predict", new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                loadForm(true);
                             }
                         }).show();
                 return true;
@@ -145,9 +167,12 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void loadForm() {
+    private void loadForm(boolean predict) {
         Intent intent = new Intent(getBaseContext(), FormActivity.class);
+        intent.putExtra("predict", predict);
         startActivity(intent);
     }
+
+
 
 }

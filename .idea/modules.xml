@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/AAEForm.iml" filepath="$PROJECT_DIR$/AAEForm.iml" />
+      <module fileurl="file://$PROJECT_DIR$/aae-form.iml" filepath="$PROJECT_DIR$/aae-form.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "646451442159-7u9se99h2lu8aqqf699t6iqu5md37uhc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.psychapps.aaeform",
+            "certificate_hash": "877ffaaec57404e002410938b2ca3d4004854e91"
+          }
+        },
+        {
           "client_id": "646451442159-vbmke7o68kdeid11j7118fenvb0mr87r.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
